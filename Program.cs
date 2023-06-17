@@ -1,11 +1,27 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OnSugarAPI.Helpers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using OnSugarAPI.Data;
+using OnSugarAPI;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if(builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDbContext<OnSugarContext>(options =>
+        options.UseSqlite(builder.Configuration.GetConnectionString("OnSugarContext") ?? throw new InvalidOperationException("Connection string 'OnSugarContext' not found.")));
+}
+else
+{
+    // TODO: MySql
+}
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

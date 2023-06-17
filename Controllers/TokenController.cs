@@ -7,7 +7,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using OnSugarAPI.Helpers;
+using OnSugarAPI.Data;
+using Microsoft.AspNetCore.Identity;
+using OnSugarAPI.Models;
 
 namespace OnSugarAPI.Controllers;
 
@@ -15,12 +19,32 @@ namespace OnSugarAPI.Controllers;
 [Route("api/[controller]")]
 public class TokenController : ControllerBase
 {
-    [HttpPost("get")]
-    public IActionResult Get(string username)
+    private readonly OnSugarContext _context;
+    private readonly PasswordHasher<UserModel> _hasher = new();
+
+    public TokenController(OnSugarContext context)
     {
+        _context = context;
+    }
+
+    [HttpPost("get")]
+    public async Task<IActionResult> Get(string email, string password)
+    {
+        var user = await _context.UserModel.FirstOrDefaultAsync(m => m.Email == email);
+        if(user == null)
+        {
+            return ResponseHelper.Error(0, "User not found");
+        }
+
+        if(_hasher.VerifyHashedPassword(user, user.Password, password) != PasswordVerificationResult.Success)
+        {
+            return ResponseHelper.Error(0, "User not found");
+        }
+
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, username)
+            new("Id", user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email)
         };
 
         var jwt = new JwtSecurityToken(
@@ -31,19 +55,30 @@ public class TokenController : ControllerBase
             signingCredentials: new SigningCredentials(AuthHelper.GetKey, SecurityAlgorithms.HmacSha256)
         );
 
-        return new JsonResult(new Dictionary<string, string>
+        return ResponseHelper.Success(new Dictionary<string, string>
         {
             { "Token", new JwtSecurityTokenHandler().WriteToken(jwt) }
         });
     }
 
-    [Authorize]
-    [HttpGet("test")]
-    public IActionResult Test()
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([Bind("Id,Email,FirstName,LastName,Password,Date")] UserModel userModel)
     {
-        return new JsonResult(new Dictionary<string, string>
+        var existingUser = await _context.UserModel.FirstOrDefaultAsync(m => m.Email == userModel.Email);
+
+        if(existingUser != null)
         {
-            { "Data", User.Identity!.Name! }
+            return ResponseHelper.Error(0, "User with this email already exists");
+        }
+
+        userModel.Password = _hasher.HashPassword(userModel, userModel.Password);
+
+        await _context.AddAsync(userModel);
+        await _context.SaveChangesAsync();
+
+        return ResponseHelper.Success(new Dictionary<string, object>
+        {
+            { "Id", userModel.Id }
         });
     }
 }

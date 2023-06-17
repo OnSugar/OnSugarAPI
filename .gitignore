@@ -1,3 +1,6 @@
+Migrations/
+OnSugarContext-*.db
+
 # globs
 Makefile.in
 *.userprefs
