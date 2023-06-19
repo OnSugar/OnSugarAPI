@@ -14,6 +14,7 @@ namespace OnSugarAPI.Models
 		[DataType(DataType.DateTime)]
 		public DateTime Date { get; set; }
 
-		public UserModel UserModel { get; set; }
+		public int UserModelId { get; set; }
+		public UserModel UserModel { get; set; } = default!;
 	}
 }

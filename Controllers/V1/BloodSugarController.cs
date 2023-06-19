@@ -15,7 +15,7 @@ using OnSugarAPI.ViewModels;
 namespace OnSugarAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("v1/[controller]")]
 [Authorize]
 public class BloodSugarController : ControllerBase
 {
@@ -28,32 +28,31 @@ public class BloodSugarController : ControllerBase
         _mapper = mapper;
     }
 
-    [HttpPost("add")]
-    public async Task<IActionResult> Add(BloodSugarViewModel viewModel)
+    [HttpPost("sync")]
+    public async Task<IActionResult> Sync(List<BloodSugarViewModel> viewModels, DateTime lastSync)
     {
         var user = await UserHelper.GetUser(_context, User);
 
-        var bloodSugarModel = _mapper.Map<BloodSugarModel>(viewModel);
+        var unsynced = await _context.BloodSugarModel.Where(m => m.UserModelId == user.Id && m.Date > lastSync).ToListAsync();
+        var unsyncedViewModels = new List<BloodSugarViewModel>();
+        foreach(var data in unsynced)
+        {
+            unsyncedViewModels.Add(_mapper.Map<BloodSugarViewModel>(data));
+        }
 
-        bloodSugarModel.UserModel = user;
+        foreach(var viewModel in viewModels)
+        {
+            var model = _mapper.Map<BloodSugarModel>(viewModel);
+            model.UserModel = user;
 
-        await _context.AddAsync(bloodSugarModel);
+            await _context.AddAsync(model);
+        }
+        
         await _context.SaveChangesAsync();
 
-        return ResponseHelper.Success(true);
-    }
-
-    [HttpGet("get")]
-    public async Task<IActionResult> Get(int offset = 0)
-    {
-        var user = await UserHelper.GetUser(_context, User);
-
-        var result = await _context.BloodSugarModel
-            .Skip(offset)
-            .Take(100)
-            .Select(m => new { Id = m.Id, Value = m.Value, Date = m.Date })
-            .ToListAsync();
-
-        return ResponseHelper.Success(result);
+        return ResponseHelper.Success(new Dictionary<string, object>
+        {
+            { "Add", unsyncedViewModels }
+        });
     }
 }

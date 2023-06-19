@@ -16,7 +16,7 @@ using OnSugarAPI.Models;
 namespace OnSugarAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("v1/[controller]")]
 public class TokenController : ControllerBase
 {
     private readonly OnSugarContext _context;

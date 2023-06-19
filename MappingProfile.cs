@@ -9,7 +9,7 @@ namespace OnSugarAPI
 	{
 		public MappingProfile()
 		{
-			CreateMap<BloodSugarViewModel, BloodSugarModel>();
+			CreateMap<BloodSugarViewModel, BloodSugarModel>().ReverseMap();
 		}
 	}
 }
